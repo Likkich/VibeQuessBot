@@ -36,7 +36,7 @@
             background-color: #4caf50;
         }
         #settingsButton {
-            background-color: #ffaa00; /* Оранжевый для "Настройки" */
+            background-color: #ffaa00;
         }
         #startScreen, #gameScreen, #leaderboardScreen, #settingsScreen {
             display: none;
@@ -108,13 +108,11 @@
             { name: "Баста - На заре", url: "https://Likkich.github.io/VibeQuessBot/audio/nazare.mp3" }
         ];
 
-        let currentMelody, audio = new Audio(), options = [], round = 1, score = 0;
+        let currentMelody, audio = new Audio(), options = [], round = 1, score = 0, playbackTimeout;
         const user = Telegram.WebApp.initDataUnsafe.user || { first_name: "Игрок", id: "unknown" };
 
-        // Устанавливаем начальную громкость (тихо, 20%)
+        // Устанавливаем начальную громкость (20%)
         audio.volume = 0.2;
-
-        // Загружаем сохранённую громкость из localStorage, если есть
         const savedVolume = localStorage.getItem("vibeVolume");
         if (savedVolume !== null) {
             audio.volume = parseFloat(savedVolume);
@@ -131,15 +129,19 @@
             currentMelody = Math.floor(Math.random() * melodies.length);
             audio.src = melodies[currentMelody].url;
 
+            // Очищаем предыдущий таймер, если он есть
+            if (playbackTimeout) clearTimeout(playbackTimeout);
+
             audio.onloadedmetadata = () => {
                 let duration = audio.duration;
                 let startTime = duration / 2;
                 audio.currentTime = startTime;
                 audio.play();
 
-                setTimeout(() => {
+                // Устанавливаем таймер на 15 секунд
+                playbackTimeout = setTimeout(() => {
                     audio.pause();
-                }, 15000); // 15 секунд
+                }, 15000);
             };
 
             options = generateOptions();
@@ -160,6 +162,7 @@
 
         function checkAnswer(index) {
             audio.pause();
+            clearTimeout(playbackTimeout); // Очищаем таймер при выборе ответа
             let result = document.getElementById("result");
             if (options[index] === melodies[currentMelody].name) {
                 score += 10;
@@ -178,9 +181,21 @@
 
         function saveScore() {
             let leaderboard = JSON.parse(localStorage.getItem("vibeLeaderboard") || "[]");
-            leaderboard.push({ name: user.first_name, score: score });
+            const userId = user.id; // Используем ID из Telegram для уникальности
+            const existingUserIndex = leaderboard.findIndex(entry => entry.id === userId);
+
+            if (existingUserIndex !== -1) {
+                // Если пользователь уже есть, обновляем его счёт, если новый выше
+                if (leaderboard[existingUserIndex].score < score) {
+                    leaderboard[existingUserIndex].score = score;
+                }
+            } else {
+                // Добавляем нового пользователя
+                leaderboard.push({ id: userId, name: user.first_name, score: score });
+            }
+
             leaderboard.sort((a, b) => b.score - a.score);
-            leaderboard = leaderboard.slice(0, 5);
+            leaderboard = leaderboard.slice(0, 5); // Топ-5
             localStorage.setItem("vibeLeaderboard", JSON.stringify(leaderboard));
             round = 1;
             score = 0;
@@ -206,10 +221,9 @@
             document.getElementById("startScreen").style.display = "block";
         }
 
-        // Обработчик изменения громкости
         document.getElementById("volumeControl").addEventListener("input", function() {
             audio.volume = this.value;
-            localStorage.setItem("vibeVolume", this.value); // Сохраняем настройку
+            localStorage.setItem("vibeVolume", this.value);
         });
     </script>
 </body>

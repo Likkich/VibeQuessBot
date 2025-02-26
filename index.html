@@ -39,7 +39,7 @@
             background-color: #ffaa00;
         }
         #exitButton {
-            background-color: #ff5555; /* Чуть другой красный для "Выход" */
+            background-color: #ff5555;
             width: 50%;
             margin-top: 20px;
         }
@@ -105,8 +105,24 @@
         <button onclick="backToStart()">Назад</button>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-database.js"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyApgWt2Deui4WGaJFT16VaKnT_InE6i4jE",
+            authDomain: "vibequessbot.firebaseapp.com",
+            databaseURL: "https://vibequessbot-default-rtdb.firebaseio.com",
+            projectId: "vibequessbot",
+            storageBucket: "vibequessbot.firebasestorage.app",
+            messagingSenderId: "320426824651",
+            appId: "1:320426824651:web:7ee14e917e6fde20c89c4e",
+            measurementId: "G-NRPDT6BLG0"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
         const melodies = [
             { name: "Баста - Моя игра", url: "https://Likkich.github.io/VibeQuessBot/audio/Basta.mp3" },
             { name: "Бурито - Мама", url: "https://Likkich.github.io/VibeQuessBot/audio/burito-mama.mp3" },
@@ -142,9 +158,11 @@
                 audio.currentTime = startTime;
                 audio.play();
 
-                playbackTimeout = setTimeout(() => {
-                    audio.pause();
-                }, 15000);
+                audio.onplaying = () => {
+                    playbackTimeout = setTimeout(() => {
+                        audio.pause();
+                    }, 15000);
+                };
             };
 
             options = generateOptions();
@@ -183,39 +201,53 @@
         }
 
         function exitGame() {
-            audio.pause(); // Останавливаем музыку
-            clearTimeout(playbackTimeout); // Очищаем таймер воспроизведения
-            saveScore(); // Сохраняем текущий счёт
+            audio.pause();
+            clearTimeout(playbackTimeout);
+            saveScore();
             document.getElementById("gameScreen").style.display = "none";
             document.getElementById("startScreen").style.display = "block";
         }
 
         function saveScore() {
-            let leaderboard = JSON.parse(localStorage.getItem("vibeLeaderboard") || "[]");
             const userId = user.id;
-            const existingUserIndex = leaderboard.findIndex(entry => entry.id === userId);
+            const userRef = database.ref("leaderboard/" + userId);
 
-            if (existingUserIndex !== -1) {
-                if (leaderboard[existingUserIndex].score < score) {
-                    leaderboard[existingUserIndex].score = score;
+            userRef.once("value", (snapshot) => {
+                const existingData = snapshot.val();
+                if (existingData && existingData.score >= score) {
+                    resetGame();
+                    return;
                 }
-            } else {
-                leaderboard.push({ id: userId, name: user.first_name, score: score });
-            }
 
-            leaderboard.sort((a, b) => b.score - a.score);
-            leaderboard = leaderboard.slice(0, 5);
-            localStorage.setItem("vibeLeaderboard", JSON.stringify(leaderboard));
-            round = 1;
-            score = 0;
+                userRef.set({
+                    name: user.first_name,
+                    score: score
+                }).then(() => {
+                    resetGame();
+                }).catch((error) => {
+                    console.error("Ошибка сохранения:", error);
+                });
+            });
         }
 
         function showLeaderboard() {
             document.getElementById("startScreen").style.display = "none";
             document.getElementById("leaderboardScreen").style.display = "block";
-            let leaderboard = JSON.parse(localStorage.getItem("vibeLeaderboard") || "[]");
-            let list = leaderboard.map((entry, i) => `${i + 1}. ${entry.name}: ${entry.score}`).join("<br>");
-            document.getElementById("leaderboard").innerHTML = list || "Пока нет лидеров!";
+            const leaderboardRef = database.ref("leaderboard");
+
+            leaderboardRef.once("value", (snapshot) => {
+                let leaderboard = snapshot.val() || {};
+                let leaderboardArray = Object.values(leaderboard)
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 5);
+                let list = leaderboardArray.map((entry, i) => `${i + 1}. ${entry.name}: ${entry.score}`).join("<br>");
+                document.getElementById("leaderboard").innerHTML = list || "Пока нет лидеров!";
+            });
+        }
+
+        function resetGame() {
+            round = 1;
+            score = 0;
         }
 
         function showSettings() {

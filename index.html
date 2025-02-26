@@ -3,46 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Угадай мелодию</title>
+    <title>Угадай мелодию - Vibe</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             text-align: center;
             padding: 20px;
-            background-color: #f0f0f0;
+            background-color: #1a1a1a; /* Чёрный фон */
+            color: #ffffff; /* Белый текст */
+            margin: 0;
+            overflow: hidden;
+        }
+        h1 {
+            font-size: 2em;
         }
         button {
-            padding: 10px;
-            margin: 5px;
-            width: 200px;
+            padding: 15px;
+            margin: 10px;
+            width: 80%;
+            max-width: 300px;
+            font-size: 1.2em;
             cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #333333; /* Тёмно-серые кнопки */
+            color: #ffffff;
         }
         #playButton {
-            background-color: #1a73e8;
-            color: white;
+            background-color: #ff4444; /* Красный для "Играть" */
+        }
+        #leaderboardButton {
+            background-color: #4caf50; /* Зелёный для "Таблица лидеров" */
+        }
+        #startScreen, #gameScreen, #leaderboardScreen {
+            display: none;
         }
         #startScreen {
             display: block;
         }
-        #gameScreen {
-            display: none;
+        #options button {
+            background-color: #444444; /* Чуть светлее для вариантов */
+        }
+        #options button:hover {
+            background-color: #666666; /* Подсветка при наведении */
+        }
+        #result, #round {
+            font-size: 1.2em;
+            margin: 10px 0;
+        }
+        #leaderboard {
+            font-size: 1.1em;
+            margin-top: 20px;
+        }
+        @media (max-width: 600px) {
+            h1 { font-size: 1.5em; }
+            button { font-size: 1em; padding: 10px; }
+            #result, #round { font-size: 1em; }
         }
     </style>
 </head>
 <body>
     <div id="startScreen">
-        <h1>Угадай мелодию</h1>
+        <h1>Vibe: Угадай мелодию</h1>
         <button id="playButton" onclick="startGame()">Играть</button>
+        <button id="leaderboardButton" onclick="showLeaderboard()">Таблица лидеров</button>
     </div>
     <div id="gameScreen">
-        <h1>Угадай мелодию</h1>
-        <p>Выбери правильный ответ:</p>
+        <h1>Vibe: Угадай мелодию</h1>
+        <p id="round">Раунд: 1</p>
         <div id="options">
             <button onclick="checkAnswer(0)">Вариант 1</button><br>
             <button onclick="checkAnswer(1)">Вариант 2</button><br>
             <button onclick="checkAnswer(2)">Вариант 3</button>
         </div>
         <p id="result"></p>
+    </div>
+    <div id="leaderboardScreen">
+        <h1>Таблица лидеров</h1>
+        <div id="leaderboard"></div>
+        <button onclick="backToStart()">Назад</button>
     </div>
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -53,21 +92,24 @@
             { name: "Инстасамка - За деньги да", url: "https://Likkich.github.io/VibeQuessBot/audio/ZaDengi.mp3" }
         ];
 
-        let currentMelody = Math.floor(Math.random() * melodies.length);
-        let audio = new Audio();
-        let options = [];
+        let currentMelody, audio = new Audio(), options = [], round = 1, score = 0;
+        const user = Telegram.WebApp.initDataUnsafe.user || { first_name: "Игрок", id: "unknown" };
 
         function startGame() {
-            // Скрываем стартовый экран, показываем игру
             document.getElementById("startScreen").style.display = "none";
             document.getElementById("gameScreen").style.display = "block";
-            // Запускаем мелодию
+            nextRound();
+        }
+
+        function nextRound() {
+            currentMelody = Math.floor(Math.random() * melodies.length);
             audio.src = melodies[currentMelody].url;
             audio.play();
-            // Генерируем варианты
             options = generateOptions();
             let buttons = document.querySelectorAll("#options button");
             buttons.forEach((btn, index) => btn.innerText = options[index]);
+            document.getElementById("round").innerText = `Раунд: ${round}`;
+            document.getElementById("result").innerText = "";
         }
 
         function generateOptions() {
@@ -80,25 +122,43 @@
         }
 
         function checkAnswer(index) {
-            let user = Telegram.WebApp.initDataUnsafe.user;
+            audio.pause();
             let result = document.getElementById("result");
             if (options[index] === melodies[currentMelody].name) {
-                result.innerText = `Правильно, ${user.first_name}! Это "${melodies[currentMelody].name}"`;
-                Telegram.WebApp.showAlert("Молодец! Начать заново?");
-                resetGame();
+                score += 10; // +10 очков за правильный ответ
+                round++;
+                result.innerText = `Правильно, ${user.first_name}!`;
+                setTimeout(nextRound, 1000); // Новый раунд через 1 секунду
             } else {
-                result.innerText = "Неправильно, попробуй ещё раз!";
+                result.innerText = "Неправильно! Игра окончена.";
+                saveScore();
+                setTimeout(() => {
+                    document.getElementById("gameScreen").style.display = "none";
+                    document.getElementById("startScreen").style.display = "block";
+                }, 2000); // Возврат на старт через 2 секунды
             }
         }
 
-        function resetGame() {
-            currentMelody = Math.floor(Math.random() * melodies.length);
-            options = generateOptions();
-            let buttons = document.querySelectorAll("#options button");
-            buttons.forEach((btn, index) => btn.innerText = options[index]);
-            audio.pause();
-            document.getElementById("result").innerText = "";
-            document.getElementById("gameScreen").style.display = "none";
+        function saveScore() {
+            let leaderboard = JSON.parse(localStorage.getItem("vibeLeaderboard") || "[]");
+            leaderboard.push({ name: user.first_name, score: score });
+            leaderboard.sort((a, b) => b.score - a.score); // Сортировка по убыванию
+            leaderboard = leaderboard.slice(0, 5); // Топ-5
+            localStorage.setItem("vibeLeaderboard", JSON.stringify(leaderboard));
+            round = 1;
+            score = 0;
+        }
+
+        function showLeaderboard() {
+            document.getElementById("startScreen").style.display = "none";
+            document.getElementById("leaderboardScreen").style.display = "block";
+            let leaderboard = JSON.parse(localStorage.getItem("vibeLeaderboard") || "[]");
+            let list = leaderboard.map((entry, i) => `${i + 1}. ${entry.name}: ${entry.score}`).join("<br>");
+            document.getElementById("leaderboard").innerHTML = list || "Пока нет лидеров!";
+        }
+
+        function backToStart() {
+            document.getElementById("leaderboardScreen").style.display = "none";
             document.getElementById("startScreen").style.display = "block";
         }
     </script>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Угадай мелодию</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        button {
+            padding: 10px;
+            margin: 5px;
+            width: 200px;
+            cursor: pointer;
+        }
+        #playButton {
+            background-color: #1a73e8;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Угадай мелодию</h1>
+    <p>Нажми "Играть", чтобы послушать отрывок, и выбери правильный ответ.</p>
+    <button id="playButton" onclick="playMelody()">Играть</button>
+    <div id="options">
+        <button onclick="checkAnswer(0)">Вариант 1</button><br>
+        <button onclick="checkAnswer(1)">Вариант 2</button><br>
+        <button onclick="checkAnswer(2)">Вариант 3</button>
+    </div>
+    <p id="result"></p>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+        // Список мелодий: {название, ссылка на аудио}
+        const melodies = [
+            { name: "Happy Birthday", url: "https://example.com/happy-birthday.mp3" },
+            { name: "Twinkle Twinkle", url: "https://example.com/twinkle.mp3" },
+            { name: "Jingle Bells", url: "https://example.com/jingle-bells.mp3" }
+        ];
+
+        let currentMelody = Math.floor(Math.random() * melodies.length); // Случайная мелодия
+        let audio = new Audio();
+        let options = generateOptions();
+
+        // Генерация вариантов ответа
+        function generateOptions() {
+            let opts = [melodies[currentMelody].name];
+            while (opts.length < 3) {
+                let randomMelody = melodies[Math.floor(Math.random() * melodies.length)].name;
+                if (!opts.includes(randomMelody)) opts.push(randomMelody);
+            }
+            return opts.sort(() => Math.random() - 0.5); // Перемешиваем
+        }
+
+        // Обновление кнопок с вариантами
+        let buttons = document.querySelectorAll("#options button");
+        buttons.forEach((btn, index) => btn.innerText = options[index]);
+
+        // Проигрывание мелодии
+        function playMelody() {
+            audio.src = melodies[currentMelody].url;
+            audio.play();
+        }
+
+        // Проверка ответа
+        function checkAnswer(index) {
+            let user = Telegram.WebApp.initDataUnsafe.user;
+            let result = document.getElementById("result");
+            if (options[index] === melodies[currentMelody].name) {
+                result.innerText = `Правильно, ${user.first_name}! Это "${melodies[currentMelody].name}"`;
+                Telegram.WebApp.showAlert("Молодец! Следующая мелодия?");
+                resetGame();
+            } else {
+                result.innerText = "Неправильно, попробуй ещё раз!";
+            }
+        }
+
+        // Сброс игры
+        function resetGame() {
+            currentMelody = Math.floor(Math.random() * melodies.length);
+            options = generateOptions();
+            buttons.forEach((btn, index) => btn.innerText = options[index]);
+            audio.pause();
+            document.getElementById("result").innerText = "";
+        }
+    </script>
+</body>
+</html>

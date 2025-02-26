@@ -9,8 +9,8 @@
             font-family: Arial, sans-serif;
             text-align: center;
             padding: 20px;
-            background-color: #1a1a1a; /* Чёрный фон */
-            color: #ffffff; /* Белый текст */
+            background-color: #1a1a1a;
+            color: #ffffff;
             margin: 0;
             overflow: hidden;
         }
@@ -26,14 +26,14 @@
             cursor: pointer;
             border: none;
             border-radius: 5px;
-            background-color: #333333; /* Тёмно-серые кнопки */
+            background-color: #333333;
             color: #ffffff;
         }
         #playButton {
-            background-color: #ff4444; /* Красный для "Играть" */
+            background-color: #ff4444;
         }
         #leaderboardButton {
-            background-color: #4caf50; /* Зелёный для "Таблица лидеров" */
+            background-color: #4caf50;
         }
         #startScreen, #gameScreen, #leaderboardScreen {
             display: none;
@@ -42,10 +42,10 @@
             display: block;
         }
         #options button {
-            background-color: #444444; /* Чуть светлее для вариантов */
+            background-color: #444444;
         }
         #options button:hover {
-            background-color: #666666; /* Подсветка при наведении */
+            background-color: #666666;
         }
         #result, #round {
             font-size: 1.2em;
@@ -89,7 +89,8 @@
         const melodies = [
             { name: "Баста - Моя игра", url: "https://Likkich.github.io/VibeQuessBot/audio/Basta.mp3" },
             { name: "Бурито - Мама", url: "https://Likkich.github.io/VibeQuessBot/audio/burito-mama.mp3" },
-            { name: "Инстасамка - За деньги да", url: "https://Likkich.github.io/VibeQuessBot/audio/ZaDengi.mp3" }
+            { name: "Инстасамка - За деньги да", url: "https://Likkich.github.io/VibeQuessBot/audio/ZaDengi.mp3" },
+            { name: "Баста - На заре", url: "https://Likkich.github.io/VibeQuessBot/audio/nazare.mp3" }
         ];
 
         let currentMelody, audio = new Audio(), options = [], round = 1, score = 0;
@@ -104,7 +105,20 @@
         function nextRound() {
             currentMelody = Math.floor(Math.random() * melodies.length);
             audio.src = melodies[currentMelody].url;
-            audio.play();
+
+            // Ждём загрузки метаданных, чтобы узнать длительность
+            audio.onloadedmetadata = () => {
+                let duration = audio.duration; // Длительность трека в секундах
+                let startTime = duration / 2; // Середина трека
+                audio.currentTime = startTime; // Устанавливаем начало с середины
+                audio.play();
+
+                // Останавливаем через 15 секунд
+                setTimeout(() => {
+                    audio.pause();
+                }, 15000); // 15 секунд = 15000 миллисекунд
+            };
+
             options = generateOptions();
             let buttons = document.querySelectorAll("#options button");
             buttons.forEach((btn, index) => btn.innerText = options[index]);
@@ -125,25 +139,25 @@
             audio.pause();
             let result = document.getElementById("result");
             if (options[index] === melodies[currentMelody].name) {
-                score += 10; // +10 очков за правильный ответ
+                score += 10;
                 round++;
                 result.innerText = `Правильно, ${user.first_name}!`;
-                setTimeout(nextRound, 1000); // Новый раунд через 1 секунду
+                setTimeout(nextRound, 1000);
             } else {
                 result.innerText = "Неправильно! Игра окончена.";
                 saveScore();
                 setTimeout(() => {
                     document.getElementById("gameScreen").style.display = "none";
                     document.getElementById("startScreen").style.display = "block";
-                }, 2000); // Возврат на старт через 2 секунды
+                }, 2000);
             }
         }
 
         function saveScore() {
             let leaderboard = JSON.parse(localStorage.getItem("vibeLeaderboard") || "[]");
             leaderboard.push({ name: user.first_name, score: score });
-            leaderboard.sort((a, b) => b.score - a.score); // Сортировка по убыванию
-            leaderboard = leaderboard.slice(0, 5); // Топ-5
+            leaderboard.sort((a, b) => b.score - a.score);
+            leaderboard = leaderboard.slice(0, 5);
             localStorage.setItem("vibeLeaderboard", JSON.stringify(leaderboard));
             round = 1;
             score = 0;

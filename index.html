@@ -35,7 +35,10 @@
         #leaderboardButton {
             background-color: #4caf50;
         }
-        #startScreen, #gameScreen, #leaderboardScreen {
+        #settingsButton {
+            background-color: #ffaa00; /* Оранжевый для "Настройки" */
+        }
+        #startScreen, #gameScreen, #leaderboardScreen, #settingsScreen {
             display: none;
         }
         #startScreen {
@@ -55,6 +58,11 @@
             font-size: 1.1em;
             margin-top: 20px;
         }
+        #volumeControl {
+            width: 80%;
+            max-width: 300px;
+            margin: 20px auto;
+        }
         @media (max-width: 600px) {
             h1 { font-size: 1.5em; }
             button { font-size: 1em; padding: 10px; }
@@ -67,6 +75,7 @@
         <h1>Vibe: Угадай мелодию</h1>
         <button id="playButton" onclick="startGame()">Играть</button>
         <button id="leaderboardButton" onclick="showLeaderboard()">Таблица лидеров</button>
+        <button id="settingsButton" onclick="showSettings()">Настройки</button>
     </div>
     <div id="gameScreen">
         <h1>Vibe: Угадай мелодию</h1>
@@ -83,6 +92,12 @@
         <div id="leaderboard"></div>
         <button onclick="backToStart()">Назад</button>
     </div>
+    <div id="settingsScreen">
+        <h1>Настройки</h1>
+        <label for="volume">Громкость:</label>
+        <input type="range" id="volumeControl" min="0" max="1" step="0.1" value="0.2">
+        <button onclick="backToStart()">Назад</button>
+    </div>
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
@@ -96,6 +111,16 @@
         let currentMelody, audio = new Audio(), options = [], round = 1, score = 0;
         const user = Telegram.WebApp.initDataUnsafe.user || { first_name: "Игрок", id: "unknown" };
 
+        // Устанавливаем начальную громкость (тихо, 20%)
+        audio.volume = 0.2;
+
+        // Загружаем сохранённую громкость из localStorage, если есть
+        const savedVolume = localStorage.getItem("vibeVolume");
+        if (savedVolume !== null) {
+            audio.volume = parseFloat(savedVolume);
+            document.getElementById("volumeControl").value = audio.volume;
+        }
+
         function startGame() {
             document.getElementById("startScreen").style.display = "none";
             document.getElementById("gameScreen").style.display = "block";
@@ -106,17 +131,15 @@
             currentMelody = Math.floor(Math.random() * melodies.length);
             audio.src = melodies[currentMelody].url;
 
-            // Ждём загрузки метаданных, чтобы узнать длительность
             audio.onloadedmetadata = () => {
-                let duration = audio.duration; // Длительность трека в секундах
-                let startTime = duration / 2; // Середина трека
-                audio.currentTime = startTime; // Устанавливаем начало с середины
+                let duration = audio.duration;
+                let startTime = duration / 2;
+                audio.currentTime = startTime;
                 audio.play();
 
-                // Останавливаем через 15 секунд
                 setTimeout(() => {
                     audio.pause();
-                }, 15000); // 15 секунд = 15000 миллисекунд
+                }, 15000); // 15 секунд
             };
 
             options = generateOptions();
@@ -171,10 +194,23 @@
             document.getElementById("leaderboard").innerHTML = list || "Пока нет лидеров!";
         }
 
+        function showSettings() {
+            document.getElementById("startScreen").style.display = "none";
+            document.getElementById("settingsScreen").style.display = "block";
+            document.getElementById("volumeControl").value = audio.volume;
+        }
+
         function backToStart() {
             document.getElementById("leaderboardScreen").style.display = "none";
+            document.getElementById("settingsScreen").style.display = "none";
             document.getElementById("startScreen").style.display = "block";
         }
+
+        // Обработчик изменения громкости
+        document.getElementById("volumeControl").addEventListener("input", function() {
+            audio.volume = this.value;
+            localStorage.setItem("vibeVolume", this.value); // Сохраняем настройку
+        });
     </script>
 </body>
 </html>

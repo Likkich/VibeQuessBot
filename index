@@ -38,9 +38,9 @@
     <script>
         // Список мелодий: {название, ссылка на аудио}
         const melodies = [
-            { name: "Happy Birthday", url: "https://example.com/happy-birthday.mp3" },
-            { name: "Twinkle Twinkle", url: "https://example.com/twinkle.mp3" },
-            { name: "Jingle Bells", url: "https://example.com/jingle-bells.mp3" }
+          { name: "Happy Birthday", url: "https://твой_юзер.github.io/guess-the-melody/audio/happy-birthday.mp3" },
+          { name: "Twinkle Twinkle", url: "https://твой_юзер.github.io/guess-the-melody/audio/twinkle.mp3" },
+          { name: "Jingle Bells", url: "https://твой_юзер.github.io/guess-the-melody/audio/jingle-bells.mp3" }
         ];
 
         let currentMelody = Math.floor(Math.random() * melodies.length); // Случайная мелодия

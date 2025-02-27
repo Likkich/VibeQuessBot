@@ -149,7 +149,6 @@
         function nextRound() {
             currentMelody = Math.floor(Math.random() * melodies.length);
             audio.src = melodies[currentMelody].url;
-
             if (playbackTimeout) clearTimeout(playbackTimeout);
 
             audio.onloadedmetadata = () => {
@@ -157,17 +156,14 @@
                 let startTime = duration / 2;
                 audio.currentTime = startTime;
                 audio.play();
-
-                audio.onplaying = () => {
-                    playbackTimeout = setTimeout(() => {
-                        audio.pause();
-                    }, 15000);
-                };
+                playbackTimeout = setTimeout(() => audio.pause(), 15000);
             };
 
             options = generateOptions();
-            let buttons = document.querySelectorAll("#options button");
-            buttons.forEach((btn, index) => btn.innerText = options[index]);
+            const buttons = document.querySelectorAll("#options button");
+            buttons.forEach((btn, index) => {
+                btn.innerText = options[index];
+            });
             document.getElementById("round").innerText = `Раунд: ${round}`;
             document.getElementById("result").innerText = "";
         }
@@ -184,7 +180,7 @@
         function checkAnswer(index) {
             audio.pause();
             clearTimeout(playbackTimeout);
-            let result = document.getElementById("result");
+            const result = document.getElementById("result");
             if (options[index] === melodies[currentMelody].name) {
                 score += 10;
                 round++;
